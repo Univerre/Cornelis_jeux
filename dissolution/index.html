@@ -280,23 +280,23 @@ const CONFIG = {
 
   // Libellés "où tu l'as placé"
   gapLabels: {
-    gap12: "entre le tube 1 et le tube 2",
-    gap23: "entre le tube 2 et le tube 3",
-    gap34: "entre le tube 3 et le tube 4",
-    gap45: "entre le tube 4 et le tube 5",
+    gap12: "Entre le tube 1 et le tube 2",
+    gap23: "Entre le tube 2 et le tube 3",
+    gap34: "Entre le tube 3 et le tube 4",
+    gap45: "Entre le tube 4 et le tube 5",
   },
 
   // Indices détaillés quand c'est faux (par zone)
   hintsByZone: {
-    gap12: "On ajoute du liquide dans le suivant. Quel verbe scientifique décrit cette action ?",
-    gap23: "Le solide disparaît à l'œil nu et passe en solution. Quel verbe utilise-t-on ?",
-    gap34: "La solution devient uniforme : soit par diffusion, soit parce qu'on mélange pour homogénéiser. Lequel des mots proposés convient ici ?",
-    gap45: "On ajoute du solvant pour rendre la solution moins concentrée. Quel est le bon verbe ?",
+    gap12: "on ajoute du liquide dans le suivant. Quel verbe scientifique décrit cette action ?",
+    gap23: "le solide disparaît à l'œil nu et passe en solution. Quel verbe utilise-t-on ?",
+    gap34: "la solution devient uniforme : soit par diffusion, soit parce qu'on mélange pour homogénéiser. Lequel des mots proposés convient ici ?",
+    gap45: "on ajoute du solvant pour rendre la solution moins concentrée. Quel est le bon verbe ?",
   },
 
   // Message complet si c'est faux
   wrongMessage: (wordLabel, zone) =>
-    `Tu as placé le mot « ${wordLabel} » ${CONFIG.gapLabels[zone]}. ${CONFIG.hintsByZone[zone]}`,
+    `Tu as placé les mots « ${wordLabel} » au mauvais endroit. ${CONFIG.gapLabels[zone]}, ${CONFIG.hintsByZone[zone]}`,
 	
 	  // Note pédagogique affichée quand tout est placé
   altNote: function(wordLabel) {
