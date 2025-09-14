@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Réviser le vocabulaire – dissolution (drag & drop)</title>
+<style>
+  :root{
+    --bg:#0f172a;          /* fond ardoise */
+    --card:#111827;        /* panneau */
+    --ink:#e5e7eb;         /* texte */
+    --accent:#60a5fa;      /* bleu doux */
+    --accent-2:#22d3ee;    /* cyan doux */
+    --ok:#10b981;          /* vert */
+    --ko:#f43f5e;          /* rouge */
+    --shadow:0 8px 24px rgba(0,0,0,.35);
+    --tube-border:6px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+    color:var(--ink);
+    background: radial-gradient(1200px 600px at 20% -10%, #1e293b 0, #0b1222 60%, #060b15 100%);
+    min-height:100svh;
+    display:flex; flex-direction:column; gap:12px;
+  }
+  header{padding:16px 16px 0}
+  header h1{font-size:clamp(18px,2.6vw,26px); margin:.2rem 0 .5rem}
+  header p{opacity:.9; margin:0}
+
+  .stage{
+    width:min(1150px,96vw);
+    margin:0 auto;
+    display:grid;
+    grid-template-columns: 1fr;
+    gap:14px;
+    padding:6px 10px 0 10px;
+  }
+
+  /* ----- Plateau avec tubes CSS ----- */
+  .board{
+    position:relative;
+    background:var(--card);
+    border-radius:18px;
+    overflow:hidden;
+    box-shadow:var(--shadow);
+    padding:clamp(8px,1.6vw,14px);
+  }
+  .grid{
+    position:relative;
+    display:grid;
+    grid-template-columns: repeat(9, 1fr); /* 5 tubes (1,3,5,7,9) + 4 gaps (2,4,6,8) */
+    gap:clamp(6px, 1.6vw, 14px);
+    align-items:end;
+    justify-items:center;
+    height:clamp(260px, 48vw, 430px); /* smartphone → Chromebook */
+  }
+
+  .tube{
+    width: 92%;
+    height: 95%;
+    align-self:end;
+    position:relative;
+    border-left: var(--tube-border) solid #000;
+    border-right: var(--tube-border) solid #000;
+    border-bottom: var(--tube-border) solid #000;
+    border-top:none;
+    border-bottom-left-radius: 52px;
+    border-bottom-right-radius: 52px;
+    background: transparent;
+    overflow: hidden;
+  }
+  /* liquide (hauteur avec --fill%) */
+  .tube .liquid{
+    position:absolute; left:0; right:0; bottom:0;
+    height: var(--fill, 0%);
+    background: linear-gradient(180deg, #a6ddfb, #94cbee);
+    border-bottom-left-radius: inherit;
+    border-bottom-right-radius: inherit;
+    box-shadow: inset 0 6px 14px rgba(0,0,0,.12);
+  }
+  .tube .liquid::before{ /* ménisque */
+    content:"";
+    position:absolute; left:8%; right:8%; top:-4px; height:10px;
+    background: radial-gradient(100% 120% at 50% 0%, rgba(255,255,255,.55), rgba(255,255,255,0) 70%);
+    border-radius: 50%;
+    opacity:.55;
+  }
+  /* particules dissoutes (points rouges) */
+  .dots, .solids{ position:absolute; inset:0; pointer-events:none; }
+  .dot, .grain{
+    position:absolute; width:6px; height:6px; border-radius:50%;
+    background:#e74c3c; box-shadow:0 0 0 1px rgba(0,0,0,.15);
+  }
+  .grain{ width:5px; height:5px; }
+
+  /* ----- Zones de dépôt ----- */
+  .drop{
+    width: 90%;
+    height: 20%;
+    align-self:end;
+    margin-bottom: 6px;
+    border:2px dashed rgba(148,163,184,.7); /* visibles par défaut */
+    border-radius:14px;
+    backdrop-filter: blur(2px);
+    display:grid; place-items:center;
+    transition: all .15s ease;
+    background: rgba(148,163,184,.10);
+  }
+  .drop:hover{ border-color:var(--accent); box-shadow:0 0 0 3px rgba(96,165,250,.18) inset; }
+  .drop.filled{
+    border:2px solid rgba(16,185,129,.75);
+    background:linear-gradient(180deg, rgba(34,197,94,.18), rgba(34,197,94,.06));
+  }
+  .drop .tag{
+    font-weight:700; font-size:clamp(11px,1.6vw,14px);
+    color:#c7f9e7; text-align:center; padding:0 6px;
+  }
+  .marker{
+    position:absolute; bottom: calc(20% + 10px); /* au-dessus de la zone */
+    transform:translateX(-50%);
+    background:rgba(15,23,42,.95);
+    border:1px solid rgba(148,163,184,.35);
+    color:#cbd5e1;
+    padding:2px 6px; border-radius:8px; font-size:12px; opacity:.85;
+    pointer-events:none;
+  }
+  /* marqueurs alignés sur les colonnes gap (2,4,6,8) */
+  .marker[data-for="gap12"]{ left: calc((100%/9) * 1.5 + 0px); }
+  .marker[data-for="gap23"]{ left: calc((100%/9) * 3.5 + 0px); }
+  .marker[data-for="gap34"]{ left: calc((100%/9) * 5.5 + 0px); }
+  .marker[data-for="gap45"]{ left: calc((100%/9) * 7.5 + 0px); }
+
+  /* ----- Banque de mots ----- */
+  .bank{
+    background:var(--card);
+    border-radius:18px; padding:14px;
+    box-shadow:var(--shadow);
+  }
+  .bank h2{font-size:clamp(16px,2.2vw,20px); margin:.1rem 0 10px}
+  .words{ display:flex; flex-wrap:wrap; gap:10px; }
+  .word{
+    appearance:none; border:none; cursor:grab;
+    background:linear-gradient(180deg,#111827,#0d1628);
+    color:var(--ink);
+    padding:10px 12px;
+    border-radius:999px;
+    font-weight:700;
+    box-shadow:0 4px 12px rgba(0,0,0,.35), inset 0 0 0 2px rgba(96,165,250,.22);
+    transition:transform .12s ease, box-shadow .12s ease, background .2s ease;
+    user-select:none;
+    min-width:max(36%,fit-content); /* gros tap sur mobile */
+    text-align:center;
+  }
+  .word:active{ cursor:grabbing; transform:scale(.98) }
+  .word.selected{ outline:3px solid rgba(34,211,238,.35); box-shadow:0 6px 16px rgba(34,211,238,.25) }
+  .word.correct{ background:linear-gradient(180deg,#0e2120,#0a1615); box-shadow: inset 0 0 0 2px rgba(16,185,129,.8), 0 8px 16px rgba(16,185,129,.2); color:#b6ffe0 }
+  .word.used{ opacity:.55; pointer-events:none }
+  .controls{ display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; }
+  .btn{
+    padding:10px 12px; border-radius:12px; border:1px solid rgba(148,163,184,.28);
+    background:#0d1425; color:var(--ink); font-weight:700; cursor:pointer;
+  }
+  .btn:hover{ border-color:var(--accent); }
+
+  /* ----- Feedback ----- */
+  #feedback{
+    position:sticky; bottom:0; inset-inline:0;
+    padding:10px 14px;
+    display:flex; justify-content:center; align-items:center; gap:8px;
+    font-size:clamp(14px,1.8vw,16px);
+    background: linear-gradient(180deg, transparent, rgba(2,6,23,.86) 18%);
+    min-height:54px;
+  }
+  .smiley{ font-size:22px; }
+  .msg{ max-width:min(1100px,96vw); text-align:center; }
+  .msg.ok{ color:var(--ok) }
+  .msg.ko{ color:var(--ko) }
+	
+	.credit{
+	  margin-left:auto;           /* pousse à droite dans .controls */
+	  opacity:.75;
+	  font-size:12px;
+	  align-self:center;
+	}
+	@media (max-width:540px){
+	  .credit{ width:100%; text-align:right; margin-left:0; }
+	}
+	
+  /* Petites retouches mobile */
+  @media (max-width: 540px){
+    .word{ padding:12px 14px; font-size:15px }
+    .controls{ gap:8px }
+
+	
+	
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Place les bons verbes entre les tubes</h1>
+  <p>Glisse un mot vers une zone, ou <strong>tape</strong> le mot puis la zone (mobile).</p>
+</header>
+
+<main class="stage">
+  <!-- Plateau CSS -->
+  <section class="board" id="board">
+    <div class="grid" id="grid">
+      <!-- Col 1 → Tube 1 -->
+      <div class="tube" style="grid-column:1; --fill:0%" data-fill="0" data-solids="16" data-dissolved="0" data-spread="none"></div>
+
+      <!-- Col 2 → Zone 1-2 -->
+      <div class="drop" style="grid-column:2" data-zone="gap12" aria-label="entre le tube 1 et le tube 2"><div class="tag"></div></div>
+
+      <!-- Col 3 → Tube 2 -->
+      <div class="tube" style="grid-column:3; --fill:58%" data-fill="58" data-solids="12" data-dissolved="0" data-spread="none"></div>
+
+      <!-- Col 4 → Zone 2-3 -->
+      <div class="drop" style="grid-column:4" data-zone="gap23" aria-label="entre le tube 2 et le tube 3"><div class="tag"></div></div>
+
+      <!-- Col 5 → Tube 3 : gradient (plus concentré en bas)-->
+      <div class="tube" style="grid-column:5; --fill:58%" data-fill="58" data-solids="0" data-dissolved="16" data-spread="gradient"></div>
+
+      <!-- Col 6 → Zone 3-4 -->
+      <div class="drop" style="grid-column:6" data-zone="gap34" aria-label="entre le tube 3 et le tube 4"><div class="tag"></div></div>
+
+      <!-- Col 7 → Tube 4 : evenly (répartition la plus uniforme)-->
+      <div class="tube" style="grid-column:7; --fill:58%" data-fill="58" data-solids="0" data-dissolved="16" data-spread="even"></div>
+
+      <!-- Col 8 → Zone 4-5 -->
+      <div class="drop" style="grid-column:8" data-zone="gap45" aria-label="entre le tube 4 et le tube 5"><div class="tag"></div></div>
+
+      <!-- Col 9 → Tube 5 -->
+      <div class="tube" style="grid-column:9; --fill:92%" data-fill="92" data-solids="0" data-dissolved="10" data-spread="full"></div>
+    </div>
+
+    <!-- Petits repères des zones -->
+    <div class="marker" data-for="gap12">1 ⇢ 2</div>
+    <div class="marker" data-for="gap23">2 ⇢ 3</div>
+    <div class="marker" data-for="gap34">3 ⇢ 4</div>
+    <div class="marker" data-for="gap45">4 ⇢ 5</div>
+  </section>
+
+  <!-- Banque de mots -->
+  <aside class="bank">
+    <h2>Fais glisser les mots suivants au bon endroit sur le dessin</h2>
+    <div class="words" id="wordBank"></div>
+    <div class="controls">
+      <button class="btn" id="resetBtn">Réinitialiser</button>
+      <label class="btn" style="display:flex; align-items:center; gap:8px;">
+        <input type="checkbox" id="showZones" checked />
+        Afficher les bordures des zones
+      </label>
+	  <span class="credit">créé par Yves Cornelis</span>
+    </div>
+  </aside>
+</main>
+
+<!-- Zone de feedback -->
+<div id="feedback"><span class="smiley" id="smiley"></span><div class="msg" id="message"></div></div>
+
+<script>
+/* ================================
+   Yves, modifie les phrases ici 👇
+   ================================ */
+const CONFIG = {
+  // Les mots proposés et les zones correctes
+  // id = slug du mot, label = texte affiché, targets = zones autorisées
+  words: [
+    { id:'verser',        label:'Verser du solvant',				targets:['gap12'] },
+    { id:'dissoudre',     label:'Se dissoudre',   					targets:['gap23'] },
+    { id:'diffuser',      label:'Si on ne secoue pas : Diffuser',   targets:['gap34'] },
+    { id:'homogeneiser',  label:'Si on secoue : Homogénéiser', 		targets:['gap34'] },
+    { id:'diluer',        label:'Diluer',							targets:['gap45'] },
+  ],
+
+  // Libellés “où tu l’as placé”
+  gapLabels: {
+    gap12: "entre le tube 1 et le tube 2",
+    gap23: "entre le tube 2 et le tube 3",
+    gap34: "entre le tube 3 et le tube 4",
+    gap45: "entre le tube 4 et le tube 5",
+  },
+
+  // Indices détaillés quand c’est faux (par zone)
+  hintsByZone: {
+    gap12: "On ajoute du liquide dans le suivant. Quel verbe scientifique décrit cette action ?",
+    gap23: "Le solide disparaît à l’œil nu et passe en solution. Quel verbe utilise-t-on ?",
+    gap34: "La solution devient uniforme : soit par diffusion, soit parce qu’on mélange pour homogénéiser. Lequel des mots proposés convient ici ?",
+    gap45: "On ajoute du solvant pour rendre la solution moins concentrée. Quel est le bon verbe ?",
+  },
+
+  // Message complet si c’est faux
+  wrongMessage: (wordLabel, zone) =>
+    `Tu as placé le mot « ${wordLabel} » ${CONFIG.gapLabels[zone]}. ${CONFIG.hintsByZone[zone]}`,
+	
+	  // Note pédagogique affichée quand tout est placé
+  altNote: function(wordLabel) {
+	  return "Note : tu n'as pas placé « " + wordLabel + " ». Ce mot aurait aussi pu être placé <strong>entre le tube 3 et le tube 4</strong> : on choisit <em>Homogénéiser</em> si on secoue (mélange mécanique), et <em>Diffuser</em> si on laisse le soluté se répartir lentement dans tout le solvant.";
+	},
+
+
+
+  // Messages “bien joué”
+  okOne: "Bravo, c'est bien placé !",
+  okAll: "🎉 Parfait, tout est bien placé !",
+  smileyGood: "😊",
+};
+/* ======= Fin du bloc modifiable ======= */
+
+/* ----------- Dessin des tubes : points rouges ----------- */
+function populateTubes(){
+  document.querySelectorAll('.tube').forEach(tube=>{
+    const fill = parseFloat(tube.dataset.fill||'0');        // 0–100 (% de hauteur de liquide)
+    const solids = parseInt(tube.dataset.solids||'0',10);   // grains au fond
+    const dissolved = parseInt(tube.dataset.dissolved||'0',10); // points dissous
+    const spread = tube.dataset.spread||'none';             // none | lower | full | gradient | even
+
+    // Ajoute le liquide
+    const liq = document.createElement('div');
+    liq.className = 'liquid';
+    tube.appendChild(liq);
+
+    // Solides au fond
+    const solidsBox = document.createElement('div');
+    solidsBox.className = 'solids';
+    tube.appendChild(solidsBox);
+    for(let i=0;i<solids;i++){
+      const g = document.createElement('span');
+      g.className = 'grain';
+      const x = 8 + Math.random()*84; // %
+      const y = 96 - Math.random()*4; // très bas
+      g.style.left = x+'%';
+      g.style.top = y+'%';
+      solidsBox.appendChild(g);
+    }
+
+    // Particules dissoutes (dans la partie liquide)
+    const dots = document.createElement('div');
+    dots.className = 'dots';
+    tube.appendChild(dots);
+
+    const liquidTop = 100 - fill; // % depuis le haut
+    let minY = liquidTop, maxY = 98;
+
+    const rand = (a,b)=> a + Math.random()*(b-a);
+
+    // --- stratégies de répartition ---
+    const drawUniform = (n)=>{
+      for(let i=0;i<n;i++){
+        const d = document.createElement('span');
+        d.className = 'dot';
+        const x = rand(10,90);
+        const y = rand(minY,maxY);
+        d.style.left = x+'%';
+        d.style.top  = y+'%';
+        dots.appendChild(d);
+      }
+    };
+
+    const drawGradientBottom = (n, depthRatio=0.90, bias=6.2)=>{
+      // profondeur du gradient (ex.: 0.78 = ~80% inférieurs du liquide)
+      maxY = liquidTop + fill*depthRatio;
+      for(let i=0;i<n;i++){
+        const d = document.createElement('span');
+        d.className = 'dot';
+        const x = rand(12,88);
+        // tirage biaisé vers le bas (t proche de 1)
+        const t = 1 - Math.pow(Math.random(), bias);
+        const y = minY + (maxY - minY) * t;
+        d.style.left = x+'%';
+        d.style.top  = y+'%';
+        dots.appendChild(d);
+      }
+    };
+
+    const drawEven = (n)=>{
+      // Répartition la plus régulière possible par grille + léger jitter
+      const cols = Math.ceil(Math.sqrt(n));
+      const rows = Math.ceil(n / cols);
+      const w = 80/cols;                 // largeur de cellule (10%..90% en X)
+      const h = (maxY - minY)/rows;      // hauteur de cellule dans le liquide
+      let k = 0;
+      for(let r=0;r<rows;r++){
+        for(let c=0;c<cols;c++){
+          if(k>=n) break;
+          const d = document.createElement('span');
+          d.className = 'dot';
+          const x = 10 + w*c + w*(0.25 + 0.5*Math.random());     // centré + jitter
+          const y = minY + h*r + h*(0.25 + 0.5*Math.random());
+          d.style.left = x+'%';
+          d.style.top  = y+'%';
+          dots.appendChild(d);
+          k++;
+        }
+      }
+    };
+
+    // Choix selon data-spread
+    if (spread === 'none'){
+      // rien
+    } else if (spread === 'lower'){
+      maxY = liquidTop + (fill*0.65);
+      drawUniform(dissolved);
+    } else if (spread === 'full'){
+      drawUniform(dissolved);
+    } else if (spread === 'gradient'){
+      drawGradientBottom(dissolved);     // ← tube 3
+    } else if (spread === 'even'){
+      drawEven(dissolved);               // ← tube 4
+    } else {
+      drawUniform(dissolved);
+    }
+  });
+}
+populateTubes();
+
+
+
+/* ----------- Jeu : drag & drop + tactile ----------- */
+const bank = document.getElementById('wordBank');
+const feedback = document.getElementById('message');
+const smiley = document.getElementById('smiley');
+const drops = [...document.querySelectorAll('.drop')];
+
+let placed = {};        // zone -> {id,label}
+let selectedWord = null; // pour le mode “tap mot puis zone”
+
+function renderBank(){
+  bank.innerHTML = '';
+  CONFIG.words.forEach(w=>{
+    const b = document.createElement('button');
+    b.className = 'word';
+    b.draggable = true;
+    b.textContent = w.label;
+    b.dataset.id = w.id;
+    b.dataset.label = w.label;
+
+    b.addEventListener('dragstart', e=>{
+      e.dataTransfer.setData('text/plain', JSON.stringify({id:w.id,label:w.label}));
+      setTimeout(()=> b.classList.add('selected'), 0);
+    });
+    b.addEventListener('dragend', ()=> b.classList.remove('selected'));
+
+    // Mode tactile : tap -> sélection
+    b.addEventListener('click', ()=>{
+      if (b.classList.contains('used')) return;
+      if (selectedWord && selectedWord !== b){
+        selectedWord.classList.remove('selected');
+      }
+      if (selectedWord === b){
+        selectedWord = null;
+        b.classList.remove('selected');
+      } else {
+        selectedWord = b;
+        b.classList.add('selected');
+      }
+    });
+
+    bank.appendChild(b);
+  });
+}
+renderBank();
+
+function setupDrops(){
+  drops.forEach(d=>{
+    d.addEventListener('dragover', e=> e.preventDefault());
+    d.addEventListener('drop', e=>{
+      e.preventDefault();
+      const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+      tryPlace(data.id, data.label, d.dataset.zone, d);
+    });
+    d.addEventListener('click', ()=>{
+      if (!selectedWord) return;
+      tryPlace(selectedWord.dataset.id, selectedWord.dataset.label, d.dataset.zone, d);
+    });
+  });
+}
+setupDrops();
+
+function clearFeedback(){ feedback.textContent=''; smiley.textContent=''; feedback.className='msg'; }
+function sayOK(one=false){
+  smiley.textContent = CONFIG.smileyGood;
+  feedback.textContent = one ? CONFIG.okOne : CONFIG.okAll;
+  feedback.className = 'msg ok';
+}
+function sayKO(txt){
+  smiley.textContent = '';
+  feedback.textContent = txt;
+  feedback.className = 'msg ko';
+}
+
+function isCorrect(wordId, zone){
+  const word = CONFIG.words.find(w=>w.id===wordId);
+  return word && word.targets.includes(zone);
+}
+
+function markWordUsed(id){
+  const btn = [...document.querySelectorAll('.word')].find(b=>b.dataset.id===id);
+  if (btn){ btn.classList.add('used','correct'); btn.ariaDisabled = "true"; }
+}
+function unuseWord(id){
+  const btn = [...document.querySelectorAll('.word')].find(b=>b.dataset.id===id);
+  if (btn){ btn.classList.remove('used','correct','selected'); btn.ariaDisabled = "false"; }
+}
+
+function tryPlace(wordId, wordLabel, zone, zoneEl){
+  clearFeedback();
+
+  // Si zone déjà occupée, libérer l'ancien mot
+  if (placed[zone]){
+    unuseWord(placed[zone].id);
+    placed[zone] = null;
+    zoneEl.classList.remove('filled');
+    zoneEl.querySelector('.tag').textContent = '';
+  }
+
+  if (isCorrect(wordId, zone)){
+    placed[zone] = {id:wordId, label:wordLabel};
+    zoneEl.classList.add('filled');
+    zoneEl.querySelector('.tag').textContent = wordLabel;
+    markWordUsed(wordId);
+
+   if (['gap12','gap23','gap34','gap45'].every(z=>placed[z])){
+	  // Message de réussite
+	  sayOK(false);
+
+	  // Cherche lequel des deux (diffuser/homogénéiser) n'a PAS été utilisé,
+	  // pour afficher la note pédagogique.
+	  const usedIds = Object.values(placed).map(v=>v.id);
+	  const altMissing = CONFIG.words.find(w =>
+		(w.id === 'diffuser' || w.id === 'homogeneiser') && !usedIds.includes(w.id)
+	  );
+
+	  if (altMissing){
+		// on remplace le message par une version enrichie (OK + note)
+		const ok = CONFIG.okAll;
+		const note = CONFIG.altNote(altMissing.label);
+		document.getElementById('message').innerHTML = '<span class="msg ok">' + ok + '</span><br><span style="opacity:.95">' + note + '</span>';
+	  }
+	} else {
+	  sayOK(true);
+	}
+
+  }else{
+    sayKO(CONFIG.wrongMessage(wordLabel, zone));
+  }
+
+  // déselection tactile
+  if (selectedWord){
+    selectedWord.classList.remove('selected');
+    selectedWord = null;
+  }
+}
+
+// Reset
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  clearFeedback();
+  placed = {};
+  drops.forEach(d=>{
+    d.classList.remove('filled');
+    d.querySelector('.tag').textContent='';
+  });
+  [...document.querySelectorAll('.word')].forEach(b=> b.classList.remove('used','correct','selected'));
+});
+
+// Afficher/masquer bordures des zones (par défaut : cochée → visible)
+document.getElementById('showZones').addEventListener('change', (e)=>{
+  document.querySelectorAll('.drop').forEach(d=>{
+    d.style.borderStyle = e.target.checked ? 'dashed' : 'none';
+    d.style.background = e.target.checked ? 'rgba(148,163,184,.10)' : 'transparent';
+  });
+});
+document.getElementById('showZones').dispatchEvent(new Event('change'));
+</script>
+</body>
+</html>
