@@ -265,7 +265,7 @@
 
 <script>
 /* ================================
-   Yves, modifie les phrases ici 👇
+   Yves, modifie les phrases ici 👇 - Phrases modifiables
    ================================ */
 const CONFIG = {
   // Les mots proposés et les zones correctes
@@ -278,7 +278,7 @@ const CONFIG = {
     { id:'diluer',        label:'Diluer',							targets:['gap45'] },
   ],
 
-  // Libellés “où tu l’as placé”
+  // Libellés "où tu l'as placé"
   gapLabels: {
     gap12: "entre le tube 1 et le tube 2",
     gap23: "entre le tube 2 et le tube 3",
@@ -286,15 +286,15 @@ const CONFIG = {
     gap45: "entre le tube 4 et le tube 5",
   },
 
-  // Indices détaillés quand c’est faux (par zone)
+  // Indices détaillés quand c'est faux (par zone)
   hintsByZone: {
     gap12: "On ajoute du liquide dans le suivant. Quel verbe scientifique décrit cette action ?",
-    gap23: "Le solide disparaît à l’œil nu et passe en solution. Quel verbe utilise-t-on ?",
-    gap34: "La solution devient uniforme : soit par diffusion, soit parce qu’on mélange pour homogénéiser. Lequel des mots proposés convient ici ?",
+    gap23: "Le solide disparaît à l'œil nu et passe en solution. Quel verbe utilise-t-on ?",
+    gap34: "La solution devient uniforme : soit par diffusion, soit parce qu'on mélange pour homogénéiser. Lequel des mots proposés convient ici ?",
     gap45: "On ajoute du solvant pour rendre la solution moins concentrée. Quel est le bon verbe ?",
   },
 
-  // Message complet si c’est faux
+  // Message complet si c'est faux
   wrongMessage: (wordLabel, zone) =>
     `Tu as placé le mot « ${wordLabel} » ${CONFIG.gapLabels[zone]}. ${CONFIG.hintsByZone[zone]}`,
 	
@@ -305,12 +305,22 @@ const CONFIG = {
 
 
 
-  // Messages “bien joué”
+  // Messages "bien joué"
   okOne: "Bravo, c'est bien placé !",
   okAll: "🎉 Parfait, tout est bien placé !",
   smileyGood: "😊",
 };
 /* ======= Fin du bloc modifiable ======= */
+
+/* ----------- Fonction pour mélanger les mots ----------- */
+function shuffleArray(array) {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
 
 /* ----------- Dessin des tubes : points rouges ----------- */
 function populateTubes(){
@@ -428,11 +438,14 @@ const smiley = document.getElementById('smiley');
 const drops = [...document.querySelectorAll('.drop')];
 
 let placed = {};        // zone -> {id,label}
-let selectedWord = null; // pour le mode “tap mot puis zone”
+let selectedWord = null; // pour le mode "tap mot puis zone"
 
 function renderBank(){
   bank.innerHTML = '';
-  CONFIG.words.forEach(w=>{
+  // Mélanger les mots avant de les afficher
+  const shuffledWords = shuffleArray(CONFIG.words);
+  
+  shuffledWords.forEach(w=>{
     const b = document.createElement('button');
     b.className = 'word';
     b.draggable = true;
@@ -566,6 +579,8 @@ document.getElementById('resetBtn').addEventListener('click', ()=>{
     d.querySelector('.tag').textContent='';
   });
   [...document.querySelectorAll('.word')].forEach(b=> b.classList.remove('used','correct','selected'));
+  // Remélanger les mots lors du reset
+  renderBank();
 });
 
 // Afficher/masquer bordures des zones (par défaut : cochée → visible)
