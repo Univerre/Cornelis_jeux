@@ -1,0 +1,14 @@
+[
+  {
+    "slug": "dissolution",
+    "title": "Dissolution & diffusion",
+    "desc": "Glisse les verbes entre les tubes (diffusion, homogénéisation, dilution, ...).",
+    "thumb": "dissolution/cover.png"
+  },
+  {
+    "slug": "precipites",
+    "title": "Précipités ioniques",
+    "desc": "Associe les ions pour former le bon précipité.",
+    "thumb": "precipites/cover.jpg"
+  }
+]
